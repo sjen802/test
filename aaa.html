@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<style>
+    .resize-drag {
+        /* 可以拖動的外框div */
+        width: 325px; 
+        height: 400px;
+        touch-action: none;
+        margin:0px auto;
+        z-index:-1;
+        /* This makes things much easier */
+        box-sizing: border-box;
+        overflow: hidden;
+        user-select: none;
+        display: block;
+        touch-action: none;
+        -webkit-transform: translate(0px, 0px);
+                transform: translate(0px, 0px);
+    }
+
+    .resize-container {
+        /* 限制圖片移動範圍的css */
+        display: inline-block;
+        width: 650px;  /* 同parentimg(背景)的長寬 */
+        height: 800px;
+        position:absolute;
+        
+        touch-action: none;
+    }
+    .parentimg{
+        width: 650px;
+        height: 800px;
+        position:absolute;
+        z-index:0;
+    }
+    #frame{
+        display: inline-block;  /* 讓元素在同一行 */
+        position:absolute;  /* 固定位置的關鍵 */
+        border-color:red;
+        border-radius: 8px;
+        border-style:solid;
+        border-width:5px;
+        z-index:1;
+        top :25%;
+        left :25%;
+    }
+
+    #portrait{
+        width: 325px;
+        height: 400px;
+        margin-top: 200px;;
+        margin-left :25%;
+    }
+    
+    
+    #frame.reset { /* 復原的延遲動畫 */
+        transition: -webkit-transform 0.3s ease-in-out;
+        transition: transform 0.3s ease-in-out;
+    }
+    
+</style>
+
+<body>
+    <div>
+        <input type="file" id="file" onchange="showPreview(this,'portrait')" />
+        <button onclick="FB_link()">點我分享到FB</button>
+        <button onclick="Line_link()">點我分享到LINE</button>
+       
+        <!-- this 指的是input這個DOM元素-->
+        <div>
+
+            <div class="resize-container" ><!-- 圖片移動範圍 --> 
+
+                 <div id = "frame"  class="resize-drag"></div><!-- 可拖動的外框 -->
+                
+                    <img id="portrait"  /><!-- 圖片放置 -->  
+                
+            </div>
+            <img class="parentimg" src="https://holykappa.000webhostapp.com/mother/mothersday.png" />
+        
+        </div>
+    </div>
+</body>
+<script src="https://cdn.jsdelivr.net/npm/interactjs@1.3.4/dist/interact.min.js"></script><!-- interact 引用縮放拖曳套件 -->
+<script src="https://cdn.bootcss.com/jquery/1.10.2/jquery.min.js"></script><!-- 引用jq -->
+
+<script async defer src="https://connect.facebook.net/zh_TW/sdk.js#xfbml=1&version=v3.2"></script><!-- FB SDK  -->
+
+<script>
+    function showPreview(source, imgId) { //上傳圖片
+        // console.log(source);
+        var file = source.files[0];
+        if (window.FileReader) {
+            var fr = new FileReader();
+            fr.onloadend = function (e) {
+                document.getElementById(imgId).src = e.target.result;
+            }
+            fr.readAsDataURL(file);
+        }
+    }
+
+
+    var angleScale = { angle: 0, scale: 1, }
+    var currentAngle, currentScale ,x ,y
+    scaleElement = document.getElementById('frame');
+    inputimg  = document.getElementById("portrait");
+    var resetTimeout;
+
+    interact('.resize-drag')
+    .gesturable({
+        onstart: function (event) {
+            angleScale.angle -= event.angle
+
+        },
+        onmove: function (event) {
+            
+            
+            currentAngle = event.angle + angleScale.angle
+            currentScale = event.scale * angleScale.scale
+
+             
+            
+            scaleElement.style.webkitTransform = scaleElement.style.transform = 'rotate(' + currentAngle + 'deg)' + 'scale(' + currentScale + ')'
+            inputimg.style.webkitTransform = inputimg.style.transform = 'rotate(' + currentAngle + 'deg)' + 'scale(' + currentScale + ')'
+            dragMoveListener(event)
+           
+        },
+        onend: function (event) {
+            angleScale.angle = angleScale.angle + event.angle
+            angleScale.scale = angleScale.scale * event.scale
+
+        }
+        
+    })
+    .draggable({ 
+        // enable inertial throwing
+        inertia: true,
+            // keep the element within the area of it's parent
+            restrict: {
+                restriction: "parent",
+                endOnly: true,
+                elementRect: { top: 0, left: 0, bottom: 1, right: 1 }   //�B�I�ʯ�
+            },
+            // enable autoScroll
+            autoScroll: true,
+
+        onmove: dragMoveListener,
+    
+        onend: function (event) {
+                var textEl = event.target.querySelector('p');
+
+                textEl && (textEl.textContent = 'moved a distance of ' + (Math.sqrt(Math.pow(event.pageX - event.x0, 2) + Math.pow(event.pageY - event.y0, 2) | 0)).toFixed(2) + 'px');
+            }
+    });
+
+
+    function dragMoveListener (event) {
+        
+        var target = event.target;
+            // keep the dragged position in the data-x/data-y attributes    將拖動位置保留在data-x / data-y屬性中
+            
+             x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
+             y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+            
+            
+        // translate the element
+            
+            target.style.webkitTransform = target.style.transform = 'translate(' + x + 'px, ' + y + 'px)'; 
+            inputimg.style.webkitTransform = inputimg.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
+          
+        // update the posiion attributes    更新位置屬性
+            target.setAttribute('data-x', x);
+            target.setAttribute('data-y', y);
+    }
+
+    window.dragMoveListener = dragMoveListener;
+
+
+
+    function FB_link() {
+        window.location.href = "http://www.facebook.com/share.php?u=https://holykappa.000webhostapp.com/mother/test5.html"; //按到後分享圖片，到FB後按下後到網站
+    };
+    function Line_link() {
+        window.location.href = "http://line.naver.jp/R/msg/text/?下次我要當海豹%0D%0Aholykappa.000webhostapp.com/mother/test5.html"; //按到後分享圖片，到FB後按下後到網站
+    };
+
+</script>
+
+</html>
